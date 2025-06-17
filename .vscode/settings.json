@@ -9,5 +9,13 @@
   "idf.toolsPathWin": "C:\\Users\\abdul\\.espressif",
   "idf.customExtraVars": {
     "IDF_TARGET": "esp32s3"
+  },
+  "files.associations": {
+    "README": "markdown",
+    "freertos.h": "c",
+    "inttypes.h": "c",
+    "esp_http_server.h": "c",
+    "esp_err.h": "c",
+    "airhive_server.h": "c"
   }
 }
