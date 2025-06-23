@@ -16,6 +16,15 @@
     "inttypes.h": "c",
     "esp_http_server.h": "c",
     "esp_err.h": "c",
-    "airhive_server.h": "c"
-  }
+    "airhive_server.h": "c",
+    "mdns.h": "c",
+    "esp_system.h": "c",
+    "esp_log.h": "c",
+    "cncm.h": "c",
+    "esp_wifi.h": "c",
+    "esp_mac.h": "c",
+    "esp_netif_defaults.h": "c"
+  },
+  "idf.flashType": "UART",
+  "idf.portWin": "COM3"
 }
