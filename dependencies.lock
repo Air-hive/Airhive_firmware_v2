@@ -26,6 +26,6 @@ dependencies:
 direct_dependencies:
 - espressif/mdns
 - espressif/usb_host_cdc_acm
-manifest_hash: c1d53512dcc0f254773ca19dd2ad9b3838e3d39ef27b6d68a5deeb2f8a31085f
+manifest_hash: 4f7837ca20505f28c116b806b4d3d06e52b045af17b1b0e996d69174721eaad0
 target: esp32s3
 version: 2.0.0

@@ -1,9 +1,41 @@
 #include "esp_wifi.h"
 #include "esp_log.h"
 #include "airhive_networking.h"
+#include "mdns.h"
 
 static const char* TAG = "Airhive-Networking";
 
+static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
+{
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
+    {
+        ESP_LOGI(TAG, "Retrying to connect to the AP with SSID: %s ...", AIRHIVE_WIFI_STA_SSID);
+        esp_wifi_connect();
+    }
+    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
+    {
+        ESP_LOGI(TAG, "Connecting to AP with SSID: %s ...", AIRHIVE_WIFI_STA_SSID);
+        esp_wifi_connect();
+    }
+    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_CONNECTED)
+    {
+        ESP_LOGI(TAG, "WiFi station connected to AP with SSID: %s", AIRHIVE_WIFI_STA_SSID);
+    }
+    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
+    {
+        ESP_LOGI(TAG, "WiFi station got IP address.");
+    }
+    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_LOST_IP)
+    {
+        ESP_LOGI(TAG, "WiFi station lost IP address.");
+    }
+    else 
+    {
+        ESP_LOGI(TAG, "Unhandled event: %s with ID: %" PRId32, event_base, event_id);
+    }
+}
+
+//TODO: return the error code at the end after cleanup.
 esp_err_t airhive_wifi_sta_init()
 {
     ESP_LOGI(TAG, "Initializing WiFi station...");
@@ -39,12 +71,12 @@ esp_err_t airhive_wifi_sta_init()
                 .authmode = WIFI_AUTH_WPA2_PSK, // Minimum auth mode for fast
                 .rssi_5g_adjustment = 0 // No adjustment for 5G RSSI
             },
-            .pmf_cfg.required = true,
+            .pmf_cfg.required = false,
             .rm_enabled = 1,
             .btm_enabled = 1, // Enable BTM (Background Traffic Management)
             .mbo_enabled = 0, // Disable MBO (Multi-Band Operation) for now, not sure about 5GHz, TODO: review this.
             .ft_enabled = 1, // Enable FT (Fast Transition)
-            .owe_enabled = 1, // Enable OWE (Opportunistic Wireless Encryption)
+            .owe_enabled = 0, // disable OWE (Opportunistic Wireless Encryption)
             .transition_disable = 0, //For now we allow WPA2.
             .sae_pwe_h2e = WPA3_SAE_PWE_UNSPECIFIED, //for now, TODO: review this.
             .sae_pk_mode = WPA3_SAE_PK_MODE_AUTOMATIC, //for now, TODO: review this.
@@ -60,17 +92,26 @@ esp_err_t airhive_wifi_sta_init()
     }
     ESP_LOGI(TAG, "WiFi station configuration set successfully.");
 
+    ret = esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL, NULL);
+    if(ret != ESP_OK)
+    {
+        ESP_LOGI(TAG, "Error registering wifi event handler: %s.", esp_err_to_name(ret));
+        return ret;
+    }
+
+    ret = esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL, NULL);
+    if(ret != ESP_OK)
+    {
+        ESP_LOGI(TAG, "Error registering IP event handler: %s.", esp_err_to_name(ret));
+        return ret;
+    }
+
+    esp_wifi_set_ps(WIFI_PS_NONE); // Disable power save mode, otherwise very poor performance.
+
     ret = esp_wifi_start();
     if(ret != ESP_OK)
     {
         ESP_LOGI(TAG, "Error starting wifi: %s.", esp_err_to_name(ret));
-        return ret;
-    }
-
-    ret = esp_wifi_connect();
-    if(ret != ESP_OK)
-    {
-        ESP_LOGI(TAG, "Error connecting to WiFi: %s.", esp_err_to_name(ret));
         return ret;
     }
 

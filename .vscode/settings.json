@@ -23,7 +23,14 @@
     "cncm.h": "c",
     "esp_wifi.h": "c",
     "esp_mac.h": "c",
-    "esp_netif_defaults.h": "c"
+    "esp_netif_defaults.h": "c",
+    "esp_event_base.h": "c",
+    "cjson.h": "c",
+    "portable.h": "c",
+    "random": "c",
+    "format": "c",
+    "type_traits": "c",
+    "esp_task.h": "c"
   },
   "idf.flashType": "UART",
   "idf.portWin": "COM3"
