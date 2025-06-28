@@ -30,8 +30,11 @@
     "random": "c",
     "format": "c",
     "type_traits": "c",
-    "esp_task.h": "c"
+    "esp_task.h": "c",
+    "airhive_networking.h": "c",
+    "esp_smartconfig.h": "c"
   },
   "idf.flashType": "UART",
-  "idf.portWin": "COM3"
+  "idf.portWin": "COM3",
+  "idf.monitorPort": "COM3"
 }

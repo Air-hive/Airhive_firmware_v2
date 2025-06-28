@@ -13,17 +13,27 @@ static httpd_handle_t server_hdl;
 static bool instance_created = false;
 
 //TODO: in case of errors return some infomation in the response body.
+//Note: each handler has the max size of request body defined locally.
+//TODO: see if you made logs that are supposed to be errors infos.
 
 //Echo back the request body as the response.
 esp_err_t test_get_handler(httpd_req_t* req) 
 {
     ESP_LOGI(TAG, "Received GET request on /test");
+    const size_t MAX_LOCAL_REQUEST_SIZE = 64;
+    if(req->content_len > MAX_LOCAL_REQUEST_SIZE)
+    {
+        ESP_LOGE(TAG, "Request body too large: %d bytes, max allowed: %d bytes", req->content_len, MAX_LOCAL_REQUEST_SIZE);
+        httpd_resp_set_status(req, "413 Payload Too Large");
+        httpd_resp_send(req, NULL, 0); // Send empty response with 413 status.
+        return ESP_OK;
+    }
 
-    char content_type_buffer[64];
+    char content_type_buffer[32];
     httpd_req_get_hdr_value_str(req, "Content-Type", content_type_buffer, sizeof(content_type_buffer)); //Null terminated.
     httpd_resp_set_type(req, content_type_buffer);
 
-    char body_buffer[req->content_len];
+    char body_buffer[MAX_LOCAL_REQUEST_SIZE];
     httpd_req_recv(req, body_buffer, req->content_len);
 
     httpd_resp_set_status(req, "200 OK");
@@ -43,9 +53,12 @@ esp_err_t commands_post_handler(httpd_req_t* req)
     {
         ESP_LOGE(TAG, "Request body too large: %d bytes, max allowed: %d bytes", req->content_len, MAX_REQUEST_BODY_SIZE);
         httpd_resp_set_status(req, "413 Payload Too Large");
+        httpd_resp_send(req, NULL, 0); // Send empty response with 413 status.
         return ESP_OK;
     }
 
+    // It seems that only the first bytes of the request body are buffered in the lower parts of the stack, and then the rest
+    // is streamed into our body_buffer afterwards. So, there is no two copies of the entire request in memory at the same time.
     char body_buffer[MAX_REQUEST_BODY_SIZE];    // Since this is a JSON string, we can't read it in chunks.
     size_t received = httpd_req_recv(req, body_buffer, sizeof(body_buffer));
     if(received != req->content_len)
@@ -316,10 +329,61 @@ esp_err_t clear_put_handler(httpd_req_t* req)
     return ESP_OK;
 }
 
-//esp_err_t wifi_config_put_handler(httpd_req_t* req) { return ESP_OK; }
-//esp_err_t ap_config_put_handler(httpd_req_t* req) { return ESP_OK; }
-//esp_err_t machine_config_put_handler(httpd_req_t* req) { return ESP_OK; }
-//esp_err_t logs_get_handler(httpd_req_t* req) { return ESP_OK; }
+esp_err_t machine_config_put_handler(httpd_req_t* req)
+{
+    ESP_LOGI(TAG, "Received PUT request on /machine-config");
+    httpd_resp_set_type(req, "application/json");
+
+    const size_t MAX_LOCAL_REQUEST_SIZE = 32;
+    if(req->content_len > MAX_LOCAL_REQUEST_SIZE)
+    {
+        ESP_LOGE(TAG, "Request body too large: %d bytes, max allowed: %d bytes", req->content_len, MAX_LOCAL_REQUEST_SIZE);
+        httpd_resp_set_status(req, "413 Payload Too Large");
+        httpd_resp_send(req, NULL, 0); // Send empty response with 413 status.
+        return ESP_OK;
+    }
+
+    char body_buffer[MAX_LOCAL_REQUEST_SIZE];
+    size_t received = httpd_req_recv(req, body_buffer, MAX_LOCAL_REQUEST_SIZE);
+    if(received != req->content_len)
+    {
+        ESP_LOGE(TAG, "Failed to receive request body, received: %d", received);
+        httpd_resp_set_status(req, "500 Internal Server Error");
+        httpd_resp_send(req, NULL, 0); // Send empty response with 500 status.
+        return ESP_FAIL;
+    }
+
+    cJSON *in_json = cJSON_ParseWithLength(body_buffer, received);
+    if(received == 0 || in_json == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to parse JSON request body");
+        httpd_resp_set_status(req, "400 Bad Request");
+        httpd_resp_send(req, NULL, 0); // Send empty response with 400 status.
+        return ESP_OK;
+    }
+
+    cJSON *baudrate_obj = cJSON_GetObjectItemCaseSensitive(in_json, "baudrate");
+    if(!cJSON_IsNumber(baudrate_obj) || baudrate_obj->valueint <= 0)
+    {
+        ESP_LOGE(TAG, "Invalid 'baudrate' parameter in JSON request");
+        cJSON_Delete(in_json);
+        httpd_resp_set_status(req, "400 Bad Request");
+        httpd_resp_send(req, NULL, 0); // Send empty response with 400 status.
+        return ESP_OK;
+    }
+    uint32_t baudrate = (uint32_t)baudrate_obj->valueint;
+    cJSON_Delete(in_json);
+
+    esp_err_t ret = cncm_reset_machine_config(baudrate);
+    if(ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error resetting machine config: %s", esp_err_to_name(ret));
+        httpd_resp_set_status(req, "500 Internal Server Error");
+        httpd_resp_send(req, NULL, 0); // Send empty response with 500 status.
+    }
+
+    return ESP_OK;
+}
 
 
 esp_err_t airhive_start_server()
@@ -367,29 +431,13 @@ esp_err_t airhive_start_server()
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server_hdl, &test_get));
 
-    // httpd_uri_t wifi_config_put = {
-    //     .uri = "/wifi-config",
-    //     .method = HTTP_PUT,
-    //     .handler = wifi_config_put_handler,
-    //     .user_ctx = NULL
-    // };
-    // ESP_ERROR_CHECK(httpd_register_uri_handler(server_hdl, &wifi_config_put));
-
-    // httpd_uri_t ap_config_put = {
-    //     .uri = "/ap-config",
-    //     .method = HTTP_PUT,
-    //     .handler = ap_config_put_handler,
-    //     .user_ctx = NULL
-    // };
-    // ESP_ERROR_CHECK(httpd_register_uri_handler(server_hdl, &ap_config_put));
-
-    // httpd_uri_t machine_config_put = {
-    //     .uri = "/machine-config",
-    //     .method = HTTP_PUT,
-    //     .handler = machine_config_put_handler,
-    //     .user_ctx = NULL
-    // };
-    // ESP_ERROR_CHECK(httpd_register_uri_handler(server_hdl, &machine_config_put));
+    httpd_uri_t machine_config_put = {
+        .uri = "/machine-config",
+        .method = HTTP_PUT,
+        .handler = machine_config_put_handler,
+        .user_ctx = NULL
+    };
+    ESP_ERROR_CHECK(httpd_register_uri_handler(server_hdl, &machine_config_put));
 
     httpd_uri_t machine_status_get = {
         .uri = "/machine-status",
@@ -406,14 +454,6 @@ esp_err_t airhive_start_server()
         .user_ctx = NULL
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server_hdl, &responses_get));
-
-    // httpd_uri_t logs_get = {
-    //     .uri = "/logs",
-    //     .method = HTTP_GET,
-    //     .handler = logs_get_handler,
-    //     .user_ctx = NULL
-    // };
-    // ESP_ERROR_CHECK(httpd_register_uri_handler(server_hdl, &logs_get));
 
     httpd_uri_t commands_post = {
         .uri = "/commands",
@@ -465,7 +505,7 @@ esp_err_t airhive_start_mdns()
     uint8_t mac[6];
     esp_efuse_mac_get_default(mac);
     char hostname[21];
-    snprintf(hostname, sizeof(hostname), "Airhive-%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    snprintf(hostname, sizeof(hostname), "Airhive-%02X%02X%02X%02X%02X%02X", MAC2STR(mac));
 
     ret = mdns_hostname_set(hostname);
     if (ret != ESP_OK) {

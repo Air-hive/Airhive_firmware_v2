@@ -6,12 +6,11 @@
 #include "nvs_flash.h"
 #include "cncm.h"
 
-
 void app_main(void)
 {
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-    ESP_ERROR_CHECK(cncm_init(115200)); //TODO: baudrate should be stored in NVS in a configuration file, also STA and AP config.
+    ESP_ERROR_CHECK(cncm_init());
     ESP_ERROR_CHECK(esp_netif_init());
     esp_netif_create_default_wifi_sta();
     ESP_ERROR_CHECK(airhive_wifi_sta_init());

@@ -7,6 +7,7 @@
 #include "freertos/message_buffer.h"
 #include "freertos/stream_buffer.h"
 #include "esp_task.h"
+#include "nvs_flash.h"
 
 #include "usb/usb_host.h"
 #include "usb/cdc_acm_host.h"
@@ -17,6 +18,8 @@ static MessageBufferHandle_t tx_buffer;
 static StreamBufferHandle_t rx_buffer;
 static SemaphoreHandle_t paused;
 static bool cncm_initialized = false;
+static nvs_handle_t cncm_nvs;
+static char* cncm_namespace = "CNCM";
 
 static const char *TAG = "CNCM";
 //right now, checking that device is open is assumed to be equivalent to checking if this is null.
@@ -131,34 +134,69 @@ static void machine_open()
 }
 
 //TODO: replace the assertions with error codes, and return error codes after cleanup.
-esp_err_t cncm_init(uint32_t baudrate)
+esp_err_t cncm_init()
 {
-    machine_config.baudrate = baudrate;
+    esp_err_t ret = nvs_open(cncm_namespace, NVS_READWRITE, &cncm_nvs);
+    if(ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error opening NVS: %s.", esp_err_to_name(ret));
+        return ret;
+    }
+
+    ret = nvs_get_u32(cncm_nvs, "baudrate", &machine_config.baudrate);
+    if(ret == ESP_ERR_NVS_NOT_FOUND)
+    {
+        ESP_LOGI(TAG, "No stored value found for baudrate, falling back to default.");
+        machine_config.baudrate = CNCM_DEFAULT_BAUDRATE;
+    }
+    else if(ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error accessing NVS: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
     ESP_LOGI(TAG, "Initializing the CNCM singleton.");
     ESP_LOGI(TAG, "Installing USB Host.");
     usb_host_config_t host_config = {
         .skip_phy_setup = false,
-        .intr_flags = ESP_INTR_FLAG_LEVEL1, //TODO: review this.
+        .intr_flags = ESP_INTR_FLAG_LEVEL2, //TODO: review this.
         .root_port_unpowered = false,
         .enum_filter_cb = NULL
     };
-    ESP_ERROR_CHECK(usb_host_install(&host_config));
+    ret = usb_host_install(&host_config);
+    if(ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error installing USB host: %s", esp_err_to_name(ret));
+        return ret;
+    }
 
     ESP_LOGI(TAG, "USB host installation complete.");
 
     rx_buffer = xStreamBufferCreateWithCaps(CNCM_RX_BUFFER_CAPACITY, CNCM_RX_BUFFER_TRIGGER_LEVEL, MALLOC_CAP_SPIRAM);
     tx_buffer = xMessageBufferCreateWithCaps(CNCM_TX_BUFFER_CAPACITY, MALLOC_CAP_SPIRAM);
-    assert(rx_buffer != NULL && tx_buffer != NULL);
+    if(rx_buffer == NULL || tx_buffer == NULL)
+    {
+        ESP_LOGE(TAG, "No enough memory for both rx and tx buffers.");
+        return ESP_ERR_NO_MEM;
+    }
     paused = xSemaphoreCreateBinary();
 
     ESP_LOGI(TAG, "FreeRTOS elements initialized.");
 
     BaseType_t task_created = xTaskCreate(usb_event_handling_task, "usb_event_handling_task", CNCM_USB_EVENT_STACK_SIZE, NULL, CNCM_USB_HOST_PRIORITY, NULL);
-    assert(task_created == pdPASS);
+    if(task_created != pdPASS)
+    {
+        ESP_LOGE(TAG, "Couldn't create USB event handling task.");
+        return ESP_FAIL;
+    }
     ESP_LOGI(TAG, "USB task created successfully.");
 
     task_created = xTaskCreate(tx_consumer, "tx_consumer", CNCM_TX_CONSUMER_STACK_SIZE, NULL, CNCM_TX_CONSUMER_PRIORITY, NULL);
-    assert(task_created == pdPASS);
+    if(task_created != pdPASS)
+    {
+        ESP_LOGE(TAG, "Couldn't create tx_consumer task.");
+        return ESP_FAIL;
+    }
 
     ESP_LOGI(TAG, "Installing CDC-ACM driver.");
     cdc_acm_host_driver_config_t driver_config = {
@@ -167,12 +205,21 @@ esp_err_t cncm_init(uint32_t baudrate)
         .xCoreID = tskNO_AFFINITY,
         .new_dev_cb = NULL
     };
-    ESP_ERROR_CHECK(cdc_acm_host_install(&driver_config));
+    ret = cdc_acm_host_install(&driver_config);
+    if(ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error installing CDC ACM host: %s", esp_err_to_name(ret));
+        return ret;
+    }
 
     cncm_initialized = true;
 
     task_created = xTaskCreate(machine_open, "machine_open", CNCM_MACHINE_OPEN_STACK_SIZE, NULL, ESP_TASK_MAIN_PRIO, NULL);
-    assert(task_created == pdPASS);
+    if(task_created != pdPASS)
+    {
+        ESP_LOGE(TAG, "Couldn't create machine open task.");
+        return ESP_FAIL;
+    }
 
     ESP_LOGI(TAG, "USB initialization complete.");
     return ESP_OK;
@@ -222,8 +269,14 @@ esp_err_t cncm_resume()
 esp_err_t cncm_reset_machine_config(uint32_t baudrate)
 {
     if(!cncm_initialized) return ESP_ERR_INVALID_STATE;
+    esp_err_t ret = nvs_set_u32(cncm_nvs, "baudrate", baudrate);
+    if(ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error accessing NVS: %s", esp_err_to_name(ret));
+        return ret;
+    }
     machine_config.baudrate = baudrate;
-    esp_err_t ret = cncm_pause();
+    ret = cncm_pause();
     if(ret != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to reset machine configuration, Error: %s", esp_err_to_name(ret));

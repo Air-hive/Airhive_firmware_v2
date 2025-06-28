@@ -9,8 +9,8 @@
 #define CNCM_TX_BUFFER_CAPACITY (1048576*4)    //4 MiB
 #define CNCM_RX_BUFFER_CAPACITY (1048576*1)    //1 MiB, External memeory must have at least RX_BUFFER_CAPACITY free.
 #define CNCM_RX_BUFFER_TRIGGER_LEVEL (32)
-#define CNCM_USB_HOST_PRIORITY (ESP_TASK_MAIN_PRIO + 2)
 #define CNCM_TX_CONSUMER_PRIORITY (ESP_TASK_MAIN_PRIO + 1)
+#define CNCM_USB_HOST_PRIORITY (CNCM_TX_CONSUMER_PRIORITY + 1)
 #define CNCM_USB_DEVICE_VID (CDC_HOST_ANY_VID)
 #define CNCM_USB_DEVICE_PID (CDC_HOST_ANY_PID)
 #define CNCM_MAX_BULK_IN_TRANSFER (1024) // TODO: may need change.
@@ -22,13 +22,14 @@
 #define CNCM_USB_EVENT_STACK_SIZE (4096)
 #define CNCM_MACHINE_OPEN_STACK_SIZE (4096)
 #define CNCM_CDC_DRIVER_STACK_SIZE (4096)
+#define CNCM_DEFAULT_BAUDRATE (115200)
 
 
 /**
  * @brief Initializes the USB host and the CDC-ACM driver. Must be called first before any function in this file.
- * @param mp_baudrate the baudrate to be used by the USB device.
+ * TODO: put return codes.
  */
-esp_err_t cncm_init(uint32_t baudrate);
+esp_err_t cncm_init();
 
 /**
  * @brief Adds a message to the tx_queue.
