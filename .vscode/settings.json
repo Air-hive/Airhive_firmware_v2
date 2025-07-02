@@ -38,7 +38,8 @@
     "string_view": "c",
     "initializer_list": "c",
     "span": "c",
-    "regex": "c"
+    "regex": "c",
+    "stdbool.h": "c"
   },
   "idf.flashType": "UART",
   "idf.portWin": "COM4",

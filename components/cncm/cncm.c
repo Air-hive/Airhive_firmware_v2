@@ -98,6 +98,16 @@ static void usb_event_handling_task(void *arg)
 //maybe need to make sure no two instances of this task will be created.
 static void machine_open()
 {
+        gpio_config_t printer_connected_led_config = {
+        .pin_bit_mask = (1ULL << AIRHIVE_PRINTER_CONNECTED_LED),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = 0,
+        .pull_down_en = 0,
+        .intr_type = GPIO_INTR_DISABLE
+        };
+    gpio_config(&printer_connected_led_config);
+
+    gpio_set_level(AIRHIVE_PRINTER_CONNECTED_LED, 0); // Turn off the connected LED.
     ESP_LOGI(TAG, "Attempting to open CDC ACM device ...");
     cdc_acm_host_device_config_t dev_config = {
         .connection_timeout_ms = portMAX_DELAY,
@@ -110,8 +120,12 @@ static void machine_open()
     while(cdc_acm_host_open(CNCM_USB_DEVICE_VID, CNCM_USB_DEVICE_PID, 0, &dev_config, &cdc_dev) != ESP_OK)
     {
         ESP_LOGI(TAG, "Failed to open CDC ACM device, retrying...");
+        gpio_set_level(AIRHIVE_PRINTER_CONNECTED_LED, 0); // Turn off the connected LED.
+
     }
     ESP_LOGI(TAG, "CDC ACM device opened.");
+    gpio_set_level(AIRHIVE_PRINTER_CONNECTED_LED, 1); // Turn on the connected LED.
+
 
     //cdc_acm_host_desc_print(cdc_dev);
     
