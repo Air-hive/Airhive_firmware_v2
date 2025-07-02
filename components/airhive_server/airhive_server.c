@@ -147,7 +147,7 @@ esp_err_t responses_get_handler(httpd_req_t* req)
     ESP_LOGI(TAG, "Received GET request on /responses");
     httpd_resp_set_type(req, "application/json");
     const size_t MAX_LOCAL_REQUEST_SIZE = 32; //since it's only a single number.
-
+   // ESP_LOGE(TAG,"response buffer size: %d",req->content_len);
     if(req->content_len > MAX_LOCAL_REQUEST_SIZE)
     {
         ESP_LOGE(TAG, "Request body too large: %d bytes, max allowed: %d bytes", req->content_len, MAX_LOCAL_REQUEST_SIZE);
@@ -380,6 +380,15 @@ esp_err_t machine_config_put_handler(httpd_req_t* req)
         ESP_LOGE(TAG, "Error resetting machine config: %s", esp_err_to_name(ret));
         httpd_resp_set_status(req, "500 Internal Server Error");
         httpd_resp_send(req, NULL, 0); // Send empty response with 500 status.
+    } else{
+        //response with ok
+        httpd_resp_set_status(req, "200 OK");
+        esp_err_t send_ret = httpd_resp_send(req, NULL, 0);
+        if(send_ret != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Failed to send response, error: %s", esp_err_to_name(send_ret));
+            return ESP_FAIL;
+        }
     }
 
     return ESP_OK;

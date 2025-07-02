@@ -6,8 +6,12 @@
 #include "esp_task.h"
 
 // TODO: change these names and add a prefix to avoid name collisions.
-#define CNCM_TX_BUFFER_CAPACITY (1048576*4)    //4 MiB
-#define CNCM_RX_BUFFER_CAPACITY (1048576*1)    //1 MiB, External memeory must have at least RX_BUFFER_CAPACITY free.
+
+// #define CNCM_TX_BUFFER_CAPACITY (1048576*4)    //4 MiB
+// #define CNCM_RX_BUFFER_CAPACITY (1048576*1)    //1 MiB, External memeory must have at least RX_BUFFER_CAPACITY free.
+
+#define CNCM_TX_BUFFER_CAPACITY (2048)    //4 MiB
+#define CNCM_RX_BUFFER_CAPACITY (2048)    //1 MiB, External memeory must have at least RX_BUFFER_CAPACITY free.
 #define CNCM_RX_BUFFER_TRIGGER_LEVEL (32)
 #define CNCM_TX_CONSUMER_PRIORITY (ESP_TASK_MAIN_PRIO + 1)
 #define CNCM_USB_HOST_PRIORITY (CNCM_TX_CONSUMER_PRIORITY + 1)

@@ -17,8 +17,8 @@ ESP_EVENT_DEFINE_BASE(AIRHIVE_EVENT);
 
 static wifi_config_t wifi_cfg = {
     .sta = {
-        .ssid = "Unset",
-        .password = "Unset",
+        .ssid = "msaad",
+        .password = "0123456seven",
         .scan_method = WIFI_FAST_SCAN,
         .bssid_set = false,
         .channel = 0,   //channel unknwon.
