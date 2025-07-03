@@ -1,4 +1,6 @@
 build/
+sdkconfig
+dependencies.lock
 sdkconfig.old
 Learning.txt
 managed_components/

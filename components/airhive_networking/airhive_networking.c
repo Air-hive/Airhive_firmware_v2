@@ -1,7 +1,6 @@
 #include "esp_wifi.h"
 #include "esp_log.h"
 #include "airhive_networking.h"
-#include "mdns.h"
 #include "driver/gpio.h"
 #include "esp_task.h"
 #include "esp_smartconfig.h"

@@ -53,7 +53,7 @@ static void tx_consumer()
             cdc_dev == NULL ||                  //include the command separators in the message length by adding two.
             cdc_acm_host_data_tx_blocking(cdc_dev, (const uint8_t*) sentence, message_len + 1, CNCM_TX_TIMEOUT_MS) != ESP_OK
         );
-        ESP_LOGI(TAG, "Tx consumer high water mark:\t%d", uxTaskGetStackHighWaterMark(NULL));
+        ESP_LOGD(TAG, "Tx consumer high water mark:\t%d", uxTaskGetStackHighWaterMark(NULL));
     }
 }
 
@@ -92,16 +92,14 @@ static void usb_event_handling_task(void *arg)
         {
             ESP_ERROR_CHECK(usb_host_device_free_all());
         }
-        ESP_LOGI(TAG, "USB event handling task high water mark:\t%d", uxTaskGetStackHighWaterMark(NULL));
+        ESP_LOGD(TAG, "USB event handling task high water mark:\t%d", uxTaskGetStackHighWaterMark(NULL));
     }
 }
 
 //maybe need to make sure no two instances of this task will be created.
 static void machine_open()
 {
-    
-
-    gpio_set_level(AIRHIVE_PRINTER_CONNECTED_LED, 0); // Turn off the connected LED.
+    gpio_set_level(CNCM_PRINTER_CONNECTED_LED, 0); // Turn off the connected LED.
     ESP_LOGI(TAG, "Attempting to open CDC ACM device ...");
     cdc_acm_host_device_config_t dev_config = {
         .connection_timeout_ms = portMAX_DELAY,
@@ -114,11 +112,9 @@ static void machine_open()
     while(cdc_acm_host_open(CNCM_USB_DEVICE_VID, CNCM_USB_DEVICE_PID, 0, &dev_config, &cdc_dev) != ESP_OK)
     {
         ESP_LOGI(TAG, "Failed to open CDC ACM device, retrying...");
-        gpio_set_level(AIRHIVE_PRINTER_CONNECTED_LED, 0); // Turn off the connected LED.
-
     }
     ESP_LOGI(TAG, "CDC ACM device opened.");
-    gpio_set_level(AIRHIVE_PRINTER_CONNECTED_LED, 1); // Turn on the connected LED.
+    gpio_set_level(CNCM_PRINTER_CONNECTED_LED, 1); // Turn on the connected LED.
 
 
     //cdc_acm_host_desc_print(cdc_dev);
@@ -135,21 +131,20 @@ static void machine_open()
     ESP_ERROR_CHECK(cdc_acm_host_set_control_line_state(cdc_dev, true, false));
     //cdc_acm_host_desc_print(cdc_dev);
 
-    ESP_LOGI(TAG, "Machine open high water mark:\t%d", uxTaskGetStackHighWaterMark(NULL));
+    ESP_LOGD(TAG, "Machine open high water mark:\t%d", uxTaskGetStackHighWaterMark(NULL));
 
     xSemaphoreGive(paused);
     vTaskDelete(NULL);
 }
 
-//TODO: replace the assertions with error codes, and return error codes after cleanup.
 esp_err_t cncm_init()
 {
     gpio_config_t printer_connected_led_config = {
-    .pin_bit_mask = (1ULL << AIRHIVE_PRINTER_CONNECTED_LED),
-    .mode = GPIO_MODE_OUTPUT,
-    .pull_up_en = 0,
-    .pull_down_en = 0,
-    .intr_type = GPIO_INTR_DISABLE
+        .pin_bit_mask = (1ULL << CNCM_PRINTER_CONNECTED_LED),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE
     };
     gpio_config(&printer_connected_led_config);
     esp_err_t ret = nvs_open(cncm_namespace, NVS_READWRITE, &cncm_nvs);

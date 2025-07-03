@@ -43,7 +43,6 @@ esp_err_t test_get_handler(httpd_req_t* req)
     return ESP_OK;
 }
 
-//TODO: put a label at the end and gather cleanup in one place then return.
 esp_err_t commands_post_handler(httpd_req_t* req)
 { 
     ESP_LOGI(TAG, "Received POST request on /commands");
@@ -65,8 +64,7 @@ esp_err_t commands_post_handler(httpd_req_t* req)
 
     // Keep receiving until we get everything
     while (received < req->content_len) {
-        ret = httpd_req_recv(req, body_buffer + received,
-                            req->content_len - received);
+        ret = httpd_req_recv(req, body_buffer + received, req->content_len - received);
         if (ret <= 0) {
             ESP_LOGE(TAG, "Error receiving request body: ret=%d", ret);
             httpd_resp_set_status(req, "500 Internal Server Error");
@@ -75,15 +73,6 @@ esp_err_t commands_post_handler(httpd_req_t* req)
         }
         received += ret;
     }
-
-    ESP_LOGI(TAG,"Recieved: %u content-len: %u",received,req->content_len);
-    // if(total_received != req->content_len)
-    // {        
-    //     ESP_LOGE(TAG, "Failed to receive request body, received: %d", received);
-    //     httpd_resp_set_status(req, "500 Internal Server Error");
-    //     httpd_resp_send(req, NULL, 0); // Send empty response with 500 status.
-    //     return ESP_FAIL;
-    // }
 
     cJSON *json = cJSON_ParseWithLength(body_buffer, received);
     if(received == 0 || json == NULL)
