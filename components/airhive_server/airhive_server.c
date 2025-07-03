@@ -60,14 +60,30 @@ esp_err_t commands_post_handler(httpd_req_t* req)
     // It seems that only the first bytes of the request body are buffered in the lower parts of the stack, and then the rest
     // is streamed into our body_buffer afterwards. So, there is no two copies of the entire request in memory at the same time.
     char body_buffer[MAX_REQUEST_BODY_SIZE];    // Since this is a JSON string, we can't read it in chunks.
-    size_t received = httpd_req_recv(req, body_buffer, sizeof(body_buffer));
-    if(received != req->content_len)
-    {        
-        ESP_LOGE(TAG, "Failed to receive request body, received: %d", received);
-        httpd_resp_set_status(req, "500 Internal Server Error");
-        httpd_resp_send(req, NULL, 0); // Send empty response with 500 status.
-        return ESP_FAIL;
+    size_t received = 0;
+    int ret = 0;
+
+    // Keep receiving until we get everything
+    while (received < req->content_len) {
+        ret = httpd_req_recv(req, body_buffer + received,
+                            req->content_len - received);
+        if (ret <= 0) {
+            ESP_LOGE(TAG, "Error receiving request body: ret=%d", ret);
+            httpd_resp_set_status(req, "500 Internal Server Error");
+            httpd_resp_send(req, NULL, 0);
+            return ESP_FAIL;
+        }
+        received += ret;
     }
+
+    ESP_LOGI(TAG,"Recieved: %u content-len: %u",received,req->content_len);
+    // if(total_received != req->content_len)
+    // {        
+    //     ESP_LOGE(TAG, "Failed to receive request body, received: %d", received);
+    //     httpd_resp_set_status(req, "500 Internal Server Error");
+    //     httpd_resp_send(req, NULL, 0); // Send empty response with 500 status.
+    //     return ESP_FAIL;
+    // }
 
     cJSON *json = cJSON_ParseWithLength(body_buffer, received);
     if(received == 0 || json == NULL)

@@ -14,6 +14,7 @@
 
 #include "cncm.h"
 
+
 static MessageBufferHandle_t tx_buffer;
 static StreamBufferHandle_t rx_buffer;
 static SemaphoreHandle_t paused;
@@ -98,14 +99,7 @@ static void usb_event_handling_task(void *arg)
 //maybe need to make sure no two instances of this task will be created.
 static void machine_open()
 {
-        gpio_config_t printer_connected_led_config = {
-        .pin_bit_mask = (1ULL << AIRHIVE_PRINTER_CONNECTED_LED),
-        .mode = GPIO_MODE_OUTPUT,
-        .pull_up_en = 0,
-        .pull_down_en = 0,
-        .intr_type = GPIO_INTR_DISABLE
-        };
-    gpio_config(&printer_connected_led_config);
+    
 
     gpio_set_level(AIRHIVE_PRINTER_CONNECTED_LED, 0); // Turn off the connected LED.
     ESP_LOGI(TAG, "Attempting to open CDC ACM device ...");
@@ -150,6 +144,14 @@ static void machine_open()
 //TODO: replace the assertions with error codes, and return error codes after cleanup.
 esp_err_t cncm_init()
 {
+    gpio_config_t printer_connected_led_config = {
+    .pin_bit_mask = (1ULL << AIRHIVE_PRINTER_CONNECTED_LED),
+    .mode = GPIO_MODE_OUTPUT,
+    .pull_up_en = 0,
+    .pull_down_en = 0,
+    .intr_type = GPIO_INTR_DISABLE
+    };
+    gpio_config(&printer_connected_led_config);
     esp_err_t ret = nvs_open(cncm_namespace, NVS_READWRITE, &cncm_nvs);
     if(ret != ESP_OK)
     {
