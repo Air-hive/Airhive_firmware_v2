@@ -6,8 +6,6 @@
 #include "esp_task.h"
 #include "driver/gpio.h"
 
-// TODO: change these names and add a prefix to avoid name collisions.
-
 // #define CNCM_TX_BUFFER_CAPACITY (1048576*4)    //4 MiB
 // #define CNCM_RX_BUFFER_CAPACITY (1048576*1)    //1 MiB, External memeory must have at least RX_BUFFER_CAPACITY free.
 
@@ -28,8 +26,7 @@
 #define CNCM_MACHINE_OPEN_STACK_SIZE (4096)
 #define CNCM_CDC_DRIVER_STACK_SIZE (4096)
 #define CNCM_DEFAULT_BAUDRATE (115200)
-
-#define AIRHIVE_PRINTER_CONNECTED_LED GPIO_NUM_37
+#define CNCM_PRINTER_CONNECTED_LED GPIO_NUM_37
 
 
 /**

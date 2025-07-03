@@ -22,10 +22,10 @@ dependencies:
   idf:
     source:
       type: idf
-    version: 5.4.2
+    version: 5.4.0
 direct_dependencies:
 - espressif/mdns
 - espressif/usb_host_cdc_acm
-manifest_hash: 4f7837ca20505f28c116b806b4d3d06e52b045af17b1b0e996d69174721eaad0
+manifest_hash: a8763b174294ef0ab644f5d5c5f5a946c6a74c674061acf0d6e95405b51df5ee
 target: esp32s3
 version: 2.0.0
