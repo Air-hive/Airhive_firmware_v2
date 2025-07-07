@@ -1,4 +1,6 @@
 from flask import Flask, request, jsonify, make_response
+from zeroconf import Zeroconf, ServiceInfo
+import socket
 
 app = Flask(__name__)
 
@@ -93,4 +95,14 @@ def machine_config_put():
     return '', 200
 
 if __name__ == '__main__':
+    info = ServiceInfo(
+        type_='_http._tcp.local.',
+        name='Airhive-test._http._tcp.local.',
+        addresses=[socket.inet_aton("127.0.0.1")],
+        port=80,
+        server='Airhive-test'
+    )
+    zeroconf = Zeroconf()
+    zeroconf.register_service(info)
+    print('mDNS service registered.')
     app.run(port=80, debug=True)
