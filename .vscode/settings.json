@@ -42,6 +42,6 @@
     "stdbool.h": "c"
   },
   "idf.flashType": "UART",
-  "idf.portWin": "COM4",
+  "idf.portWin": "COM3",
   "idf.monitorPort": "COM3"
 }
