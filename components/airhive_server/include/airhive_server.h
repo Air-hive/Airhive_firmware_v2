@@ -7,6 +7,7 @@
 #define MAX_REQUEST_BODY_SIZE (50 * 1024) // 50 KiB
 // The stack size depends on the maximum request body size, as we need to allocate a buffer for it on the stack.
 #define SERVER_TASK_STACK_SIZE (MAX_REQUEST_BODY_SIZE + 4098)
+#define MAX_RESPONSE_SIZE 5000
 
 esp_err_t airhive_start_server();
 

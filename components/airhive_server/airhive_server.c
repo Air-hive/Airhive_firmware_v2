@@ -151,46 +151,6 @@ esp_err_t responses_get_handler(httpd_req_t* req)
 {
     ESP_LOGI(TAG, "Received GET request on /responses");
     httpd_resp_set_type(req, "application/json");
-    const size_t MAX_LOCAL_REQUEST_SIZE = 32; //since it's only a single number.
-   // ESP_LOGE(TAG,"response buffer size: %d",req->content_len);
-    if(req->content_len > MAX_LOCAL_REQUEST_SIZE)
-    {
-        ESP_LOGE(TAG, "Request body too large: %d bytes, max allowed: %d bytes", req->content_len, MAX_LOCAL_REQUEST_SIZE);
-        httpd_resp_set_status(req, "413 Payload Too Large");
-        httpd_resp_send(req, NULL, 0); // Send empty response with 413 status.
-        return ESP_OK;
-    }
-
-    char body_buffer[MAX_LOCAL_REQUEST_SIZE];
-    size_t received = httpd_req_recv(req, body_buffer, MAX_LOCAL_REQUEST_SIZE);
-    if(received != req->content_len)
-    {
-        ESP_LOGE(TAG, "Failed to receive request body, received: %d", received);
-        httpd_resp_set_status(req, "500 Internal Server Error");
-        httpd_resp_send(req, NULL, 0); // Send empty response with 500 status.
-        return ESP_FAIL;
-    }
-
-    cJSON *in_json = cJSON_ParseWithLength(body_buffer, received);
-    if(received == 0 || in_json == NULL)
-    {
-        ESP_LOGE(TAG, "Failed to parse JSON request body");
-        httpd_resp_set_status(req, "400 Bad Request");
-        httpd_resp_send(req, NULL, 0); // Send empty response with 400 status.
-        return ESP_OK;
-    }
-
-    cJSON *required_size_obj = cJSON_GetObjectItemCaseSensitive(in_json, "size");
-    if(!cJSON_IsNumber(required_size_obj) || required_size_obj->valueint <= 0)
-    {
-        ESP_LOGE(TAG, "Invalid 'size' parameter in JSON request");
-        cJSON_Delete(in_json);
-        httpd_resp_set_status(req, "400 Bad Request");
-        httpd_resp_send(req, NULL, 0); // Send empty response with 400 status.
-        return ESP_OK;
-    }
-    size_t required_size = (size_t)required_size_obj->valueint;
-    cJSON_Delete(in_json);
 
     cJSON *out_json = cJSON_CreateObject();
     if(out_json == NULL)
@@ -199,10 +159,9 @@ esp_err_t responses_get_handler(httpd_req_t* req)
         httpd_resp_set_status(req, "500 Internal Server Error");
         goto cleanup;
     }
-
-    char *responses_str = malloc(required_size + 1);
+    char *responses_str = malloc(MAX_RESPONSE_SIZE + 1);
     size_t response_size = 0;
-    esp_err_t ret = cncm_rx_consumer((uint8_t*)responses_str, &response_size, required_size);
+    esp_err_t ret = cncm_rx_consumer((uint8_t*)responses_str, &response_size, MAX_RESPONSE_SIZE);
     if(ret != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to read responses, error: %s", esp_err_to_name(ret));
@@ -414,10 +373,11 @@ esp_err_t airhive_start_server()
     airhive_server_config.server_port            = 80;
     airhive_server_config.max_resp_headers       = 8;    //TODO: review this.
     airhive_server_config.max_open_sockets       = 1;
+    airhive_server_config.backlog_conn           = 5;
     airhive_server_config.max_uri_handlers       = 11;
     airhive_server_config.send_wait_timeout      = 5;   // Timeout for send function (in seconds).
     airhive_server_config.recv_wait_timeout      = 5;   // Timeout for recv function (in seconds).
-    airhive_server_config.enable_so_linger       = true;
+    airhive_server_config.enable_so_linger       = false;
     airhive_server_config.linger_timeout         = 1;
     airhive_server_config.lru_purge_enable       = true; // Enable LRU purge to replace the current connection with the new one.
     airhive_server_config.keep_alive_enable      = true; // Presistent connections enabled.
