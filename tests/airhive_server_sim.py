@@ -5,8 +5,11 @@ import argparse
 
 app = Flask(__name__)
 
-CNCM_MAX_COMMAND_SIZE = 128
+CNCM_MAX_COMMAND_SIZE = 512
 machine_running = False
+
+currently_printing = False
+print_progress = 0
 
 @app.route('/test', methods=['GET'])
 def test_get():
@@ -34,6 +37,15 @@ def commands_post():
         if not isinstance(cmd, str) or len(cmd) >= CNCM_MAX_COMMAND_SIZE:
             return '', 400
         # Simulate sending command (always succeeds)
+        if 'M24' in cmd:
+            global currently_printing, print_progress
+            currently_printing = True
+            print_progress = 0
+        elif 'M25' in cmd:
+            currently_printing = False
+        else:
+            # Other commands are ignored in this simulation
+            pass
         sent_commands += 1
     return jsonify(sent_commands=sent_commands), 200
 
@@ -42,7 +54,13 @@ def responses_get():
     if request.content_length and request.content_length > 32:
         return '', 413
     # Simulate response data
-    responses = 'ok T:30.62 /0.00 B:29.77 /0.00 @:0 B@:0\n----------------\n\nBegin file list\n\nCUBE~1.GCO 324730\n\n3DBENC~1.GCO 2540254\n\nEnd file list\n\n-----------\n\necho:busy: processing\n\necho:busy: processing\n\nX:79.00 Y:98.00 Z:0.65 E:0.00 Count A:14183B:1523 Z:525\n\nok\n------------------------------------\nNot SD printing\n\nok'
+    global currently_printing, print_progress
+    responses = f'ok T:30.62 /0.00 B:29.77 /0.00 @:0 B@:0\n\nBegin file list\n\nCUBE~1.GCO 324730\n\n3DBENC~1.GCO 2540254\n\nEnd file list\n\necho:busy: processing\n\necho:busy: processing\n\nX:79.00 Y:98.00 Z:0.65 E:0.00 Count A:14183B:1523 Z:525\n\nok\n\nNot SD printing\n\nok\n{f'SD printing byte {print_progress}/1000' if currently_printing else ''}\n'
+    if currently_printing:
+        print_progress += 1
+    if print_progress > 1000:
+        print_progress = 0
+        currently_printing = False
     return jsonify(responses=responses), 200
 
 @app.route('/machine-status', methods=['GET'])
@@ -70,7 +88,6 @@ def stop_put():
 
 @app.route('/clear', methods=['PUT'])
 def clear_put():
-    global machine_running
     # Simulate always succeeds
     return '', 200
 
