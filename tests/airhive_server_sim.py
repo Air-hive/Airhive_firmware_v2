@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, make_response
 from zeroconf import Zeroconf, ServiceInfo
 import socket
+import argparse
 
 app = Flask(__name__)
 
@@ -40,15 +41,8 @@ def commands_post():
 def responses_get():
     if request.content_length and request.content_length > 32:
         return '', 413
-    try:
-        body = request.get_json(force=True)
-    except Exception:
-        return '', 400
-    size = body.get('size')
-    if not isinstance(size, int) or size <= 0:
-        return '', 400
     # Simulate response data
-    responses = 'R' * min(size, 100)
+    responses = 'ok T:30.62 /0.00 B:29.77 /0.00 @:0 B@:0\n----------------\n\nBegin file list\n\nCUBE~1.GCO 324730\n\n3DBENC~1.GCO 2540254\n\nEnd file list\n\n-----------\n\necho:busy: processing\n\necho:busy: processing\n\nX:79.00 Y:98.00 Z:0.65 E:0.00 Count A:14183B:1523 Z:525\n\nok\n------------------------------------\nNot SD printing\n\nok'
     return jsonify(responses=responses), 200
 
 @app.route('/machine-status', methods=['GET'])
@@ -95,15 +89,27 @@ def machine_config_put():
     return '', 200
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description="Process a single integer argument"
+    )
+    # Define one positional argument called “number”, cast to int
+    parser.add_argument(
+        "number",
+        type=int,
+        help="An integer value to process"
+    )
+    args = parser.parse_args()
+    n = args.number
+
     info = ServiceInfo(
         type_='_http._tcp.local.',
-        name='Airhive-test._http._tcp.local.',
+        name=f'Airhive{n}-test._http._tcp.local.',
         addresses=[socket.inet_aton("127.0.0.1")],
-        port=80,
-        server='Airhive-test.local.',
+        port=8000 + n,
+        server=f'Airhive{n}-test.local.',
         properties={}
     )
     zeroconf = Zeroconf()
     zeroconf.register_service(info, allow_name_change=True)
     print('mDNS service registered.')
-    app.run(port=80, debug=True)
+    app.run(port=8000 + n, debug=True)

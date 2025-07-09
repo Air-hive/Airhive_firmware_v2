@@ -1,0 +1,5 @@
+Start-Process powershell -ArgumentList '-NoExit', '-Command', 'python airhive_server_sim.py 1'
+Start-Process powershell -ArgumentList '-NoExit', '-Command', 'python airhive_server_sim.py 2'
+Start-Process powershell -ArgumentList '-NoExit', '-Command', 'python airhive_server_sim.py 3'
+Start-Process powershell -ArgumentList '-NoExit', '-Command', 'python airhive_server_sim.py 4'
+Start-Process powershell -ArgumentList '-NoExit', '-Command', 'python airhive_server_sim.py 5'
