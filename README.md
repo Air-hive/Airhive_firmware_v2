@@ -9,6 +9,9 @@
    1. FreeRTOS	13
    2. Tasks	13
 
+Check the project's full documentation [here](https://github.com/Air-hive/AirHive_Frontend/blob/master/AirHiveDocumentation.pdf)
+
+
 ![Project Structure](firmware.png "Project Structure")
 
 
