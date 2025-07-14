@@ -9,6 +9,7 @@
    1. FreeRTOS	13
    2. Tasks	13
 
+![Project Structure](firmware.png "Project Structure")
 
 
 **FIRMWARE**
